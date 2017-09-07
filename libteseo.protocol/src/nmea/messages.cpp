@@ -1,3 +1,24 @@
+/*
+* This file is part of Teseo Android HAL
+*
+* Copyright (c) 2016-2017, STMicroelectronics - All Rights Reserved
+* Author(s): Baudouin Feildel <baudouin.feildel@st.com> for STMicroelectronics.
+*
+* License terms: Apache 2.0.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*/
 /**
  * @file messages.cpp
  * @author Baudouin Feildel <baudouin.feildel@st.com>
@@ -16,6 +37,7 @@
 #include <teseo/vendor/frozen/unordered_map.h>
 #include <teseo/vendor/frozen/string.h>
 #include <teseo/model/Coordinate.h>
+#include <teseo/model/FixAndOperatingModes.h>
 #include <teseo/model/FixQuality.h>
 #include <teseo/model/TalkerId.h>
 #include <teseo/utils/ByteVector.h>
@@ -25,15 +47,16 @@
 using namespace frozen::string_literals;
 
 // Messages to debug
-//#define DISABLE_ALL_MESSAGE_DEBUGGING
 #ifndef DISABLE_ALL_MESSAGE_DEBUGGING
 	// NMEA std. messages
-	#define MSG_DBG_GGA
+	//#define MSG_DBG_GGA
 	//#define MSG_DBG_VTG
 	//#define MSG_DBG_GSV
 	//#define MSG_DBG_GSA
 	// STMicro proprietary messages
 	//#define MSG_DBG_SBAS
+	#define MSG_DBG_PSTMVER
+	#define MSG_DBG_STAGPS8PASSRTN
 #endif
 
 namespace stm {
@@ -51,10 +74,15 @@ frozen::unordered_map<frozen::string, MessageDecoder, 4> std = {
 	{"VTG"_s, &decoders::vtg},
 	{"GSV"_s, &decoders::gsv},
 	{"GSA"_s, &decoders::gsa}
+	// Do not forget to update number of elements in map declaration
 };
 
-frozen::unordered_map<frozen::string, MessageDecoder, 1> stm = {
-	{"SBAS"_s, &decoders::sbas}
+frozen::unordered_map<frozen::string, MessageDecoder, 3> stm = {
+	{"SBAS"_s, &decoders::sbas},
+	{"VER"_s,  &decoders::pstmver},
+	{"STAGPS8PASSRTN"_s,  &decoders::pstmstagps8passrtn},
+	{"STAGPS8PASSGENERROR"_s, &decoders::pstmstagps8passrtn}
+	// Do not forget to update number of elements in map declaration
 };
 
 MessageDecoder getMessageDecoder(const NmeaMessage & msg)
@@ -63,11 +91,33 @@ MessageDecoder getMessageDecoder(const NmeaMessage & msg)
 
 	if(msg.talkerId == TalkerId::PSTM)
 	{
-		return stm.count(sid) ? stm.at(sid) : nullptr;
+		auto it = stm.find(sid);
+
+		#ifdef DEBUG_NMEA_DECODER
+		if(it == stm.end())
+		{
+			ALOGW("No decoder for proprietary message, talkerId: '%s', sentenceId: '%s'",
+				TalkerIdToString(msg.talkerId),
+				utils::bytesToString(msg.sentenceId).c_str());
+		}
+		#endif
+
+		return (it != stm.end()) ? (*it).second : nullptr;
 	}
 	else
 	{
-		return std.count(sid) ? std.at(sid) : nullptr;
+		auto it = std.find(sid);
+
+		#ifdef DEBUG_NMEA_DECODER
+		if(it == std.end())
+		{
+			ALOGW("No decoder for standard message, talkerId: '%s', sentenceId: '%s'",
+				TalkerIdToString(msg.talkerId),
+				utils::bytesToString(msg.sentenceId).c_str());
+		}
+		#endif
+
+		return (it != std.end()) ? (*it).second : nullptr;
 	}
 }
 
@@ -77,8 +127,12 @@ void decode(AbstractDevice & dev, const NmeaMessage & msg)
 
 	if(d != nullptr)
 		d(dev, msg);
-	//else
-	//	ALOGW("No decoder for message %s%s", TalkerIdToString(msg.talkerId), bytesToString(msg.sentenceId).c_str());
+#ifdef DEBUG_NMEA_DECODER
+	else
+	{
+		ALOGW("Decoder is nullptr.");
+	}
+#endif
 }
 
 #ifdef MSG_DBG_GGA
@@ -113,6 +167,7 @@ void decoders::gga(AbstractDevice & dev, const NmeaMessage & msg)
 	auto locResult = dev.getLocation();
 	Location loc = locResult ? *locResult : Location();
 
+	loc.quality(quality);
 	loc.timestamp(timestamp);
 
 	if(quality == FixQuality::Invalid)
@@ -316,14 +371,22 @@ void decoders::gsa(AbstractDevice & dev, const NmeaMessage & msg)
 	GSA_LOGI("Decode GSA: %s", msg.toString().c_str());
 
 	// First two parameters are unused
-	auto it = msg.parameters.begin() + 2;
+	auto it = msg.parameters.begin() + 1;
 
 	// Selection mode: Auto or Manual - unused
 	//char selectionMode = (*it).at(0);
 
 	// Mode: 1 = no fix / 2 = 2D fix / 3 = 3D fix - unused
-	//int mode = utils::byteVectorParse<int>(*it);
+	FixMode mode = FixModeFromChar((*it).at(0));
+	++it;
 
+	// Update fix mode
+	auto locResult = dev.getLocation();
+	Location loc = locResult ? *locResult : Location();
+	loc.fixMode(mode);
+	dev.setLocation(loc);
+
+	// Update satellites usage informations
 	for(int i = 0; i < 12; i++)
 	{
 		if((*it).size() > 0)
@@ -396,6 +459,59 @@ void decoders::sbas(AbstractDevice & dev, const NmeaMessage & msg)
 		azimuth,
 		snr,
 		tracked ? "true" : "false");
+}
+
+#ifdef MSG_DBG_PSTMVER
+#define PSTMVER_LOGI(...) ALOGI(__VA_ARGS__)
+#define PSTMVER_LOGW(...) ALOGW(__VA_ARGS__)
+#define PSTMVER_LOGE(...) ALOGE(__VA_ARGS__)
+#else
+#define PSTMVER_LOGI(...)
+#define PSTMVER_LOGW(...)
+#define PSTMVER_LOGE(...)
+#endif
+void decoders::pstmver(AbstractDevice & dev, const NmeaMessage & msg)
+try
+{
+	PSTMVER_LOGI("Decode PSTMVER: %s", msg.toCString());
+
+	model::Version v(bytesToString(msg.parameters.at(0)));
+
+	PSTMVER_LOGI("Product: %s, version string: %s", v.getProduct().c_str(), v.toString().c_str());
+
+	dev.newVersionNumber(v);
+}
+catch(const std::exception & ex)
+{
+	ALOGE("Error while parsing version number: %s", ex.what());
+}
+catch(...)
+{
+	ALOGE("Error while parsing version number.");
+}
+
+#ifdef MSG_DBG_STAGPS8PASSRTN
+#define STAGPS8PASSRTN_LOGI(...) ALOGI(__VA_ARGS__)
+#define STAGPS8PASSRTN_LOGW(...) ALOGW(__VA_ARGS__)
+#define STAGPS8PASSRTN_LOGE(...) ALOGE(__VA_ARGS__)
+#else
+#define STAGPS8PASSRTN_LOGI(...)
+#define STAGPS8PASSRTN_LOGW(...)
+#define STAGPS8PASSRTN_LOGE(...)
+#endif
+void decoders::pstmstagps8passrtn(AbstractDevice & dev, const NmeaMessage & msg)
+{
+	if(msg.sentenceId == utils::createFromString("STAGPS8PASSGENERROR"))
+	{
+		STAGPS8PASSRTN_LOGI("Decode PSTMSTAGPS8PASSGENERROR");
+		dev.onStagps8Answer(model::Stagps8Answer::PasswordReturnKO, { });
+	}
+	else
+	{
+		STAGPS8PASSRTN_LOGI("Decode PSTMSTAGPS8PASSRTN: %s", msg.toCString());
+		STAGPS8PASSRTN_LOGI("Password string: %s", bytesToString(msg.parameters.at(0)).c_str());
+		dev.onStagps8Answer(model::Stagps8Answer::PasswordReturnOk, { msg.parameters.at(0) });
+	}
 }
 
 } // namespace nmea

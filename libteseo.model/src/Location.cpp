@@ -1,3 +1,24 @@
+/*
+* This file is part of Teseo Android HAL
+*
+* Copyright (c) 2016-2017, STMicroelectronics - All Rights Reserved
+* Author(s): Baudouin Feildel <baudouin.feildel@st.com> for STMicroelectronics.
+*
+* License terms: Apache 2.0.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*/
 /**
  * @file Location.cpp
  * @author Baudouin Feildel <baudouin.feildel@st.com>
@@ -9,67 +30,23 @@
 
 namespace stm {
 
+using namespace model;
+
 Location::Location()
 {
 	this->invalidateAll();
+	this->_fixQuality = FixQuality::Invalid;
+	this->_fixMode = FixMode::NoFix;
 }
 
-Location::Location(GpsUtcTime timestamp, double lat, double lon)
+FixQuality Location::quality() const
 {
-	this->invalidateAll();
-	this->timestamp(timestamp);
-	this->location(lat, lon);
+	return this->_fixQuality;
 }
 
-Location::Location(GpsUtcTime timestamp, double lat, double lon, double alt)
+FixMode Location::fixMode() const
 {
-	this->invalidateAll();
-	this->timestamp(timestamp);
-	this->location(lat, lon);
-	this->altitude(alt);
-}
-
-Location::Location(GpsUtcTime timestamp, double lat, double lon, double alt, float speed)
-{
-	this->invalidateAll();
-	this->timestamp(timestamp);
-	this->location(lat, lon);
-	this->altitude(alt);
-	this->speed(speed);
-}
-
-Location::Location(
-	GpsUtcTime timestamp,
-	double lat,
-	double lon,
-	double alt,
-	float speed,
-	float bearing)
-{
-	this->invalidateAll();
-	this->timestamp(timestamp);
-	this->location(lat, lon);
-	this->altitude(alt);
-	this->speed(speed);
-	this->bearing(bearing);
-}
-
-Location::Location(
-	GpsUtcTime timestamp,
-	double lat,
-	double lon,
-	double alt,
-	float speed,
-	float bearing,
-	float accuracy)
-{
-	this->invalidateAll();
-	this->timestamp(timestamp);
-	this->location(lat, lon);
-	this->altitude(alt);
-	this->speed(speed);
-	this->bearing(bearing);
-	this->accuracy(accuracy);
+	return this->_fixMode;
 }
 
 double Location::latitude() const
@@ -110,6 +87,18 @@ float Location::accuracy() const
 GpsUtcTime Location::timestamp() const
 {
 	return _timestamp;
+}
+
+FixQuality Location::quality(FixQuality value)
+{
+	this->_fixQuality = value;
+	return this->_fixQuality;
+}
+
+FixMode Location::fixMode(FixMode value)
+{
+	this->_fixMode = value;
+	return this->_fixMode;
 }
 
 std::pair<double, double> Location::location(double latitude, double longitude)

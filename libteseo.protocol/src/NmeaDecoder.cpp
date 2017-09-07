@@ -1,3 +1,24 @@
+/*
+* This file is part of Teseo Android HAL
+*
+* Copyright (c) 2016-2017, STMicroelectronics - All Rights Reserved
+* Author(s): Baudouin Feildel <baudouin.feildel@st.com> for STMicroelectronics.
+*
+* License terms: Apache 2.0.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*/
 /**
  * @file NmeaDecoder.cpp
  * @author Baudouin Feildel <baudouin.feildel@st.com>
@@ -156,19 +177,28 @@ void NmeaDecoder::decode(ByteVectorPtr bytesPtr)
 	if(multipleChecksum)
 	{
 		// Find first '*'
-		for(ByteVector::size_type i = 0; i < bytes.size(); i++)
+		for(auto it = bytes.cbegin(); it != bytes.end(); ++it)
 		{
-			if(bytes.at(i) == '*')
+			if(*it == '*')
 			{
-				bytes.resize(i);
+				bytes.erase(it - 1, bytes.cend());
 				break;
 			}
 		}
 	}
 	else
 	{
-		// Remove last three characters
-		bytes.erase(bytes.end() - 3, bytes.end());
+		// Find last '*'
+		for(auto rit = bytes.crbegin(); rit != bytes.crend(); ++rit)
+		{
+			if(*rit == '*')
+			{
+				++rit; // <-- Move the iterator to also remove the star
+				// it.base() convert reverse iterator to "normal" iterator
+				bytes.erase(rit.base(), bytes.cend());
+				break;
+			}	
+		}
 	}
 
 

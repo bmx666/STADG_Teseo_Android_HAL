@@ -1,3 +1,24 @@
+/*
+* This file is part of Teseo Android HAL
+*
+* Copyright (c) 2016-2017, STMicroelectronics - All Rights Reserved
+* Author(s): Baudouin Feildel <baudouin.feildel@st.com> for STMicroelectronics.
+*
+* License terms: Apache 2.0.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*/
 /**
  * @file Location.h
  * @author Baudouin Feildel <baudouin.feildel@st.com>
@@ -10,6 +31,9 @@
 #include <hardware/gps.h>
 #include <teseo/utils/ByteVector.h>
 
+#include "FixAndOperatingModes.h"
+#include "FixQuality.h"
+
 namespace stm {
 
 /**
@@ -17,6 +41,12 @@ namespace stm {
  */
 class Location {
 private:
+
+	/** Location quality */
+	FixQuality _fixQuality;
+
+	/** Fix mode */
+	model::FixMode _fixMode;
 
 	/** Represents latitude in degrees. */
     double          _latitude;
@@ -53,23 +83,6 @@ private:
 
 public:
 	Location();
-
-	Location(GpsUtcTime timestamp, double lat, double lon);
-
-	Location(GpsUtcTime timestamp, double lat, double lon, double alt);
-
-	Location(GpsUtcTime timestamp, double lat, double lon, double alt, float speed);
-
-	Location(GpsUtcTime timestamp, double lat, double lon, double alt, float speed, float bearing);
-
-	Location(
-		GpsUtcTime timestamp,
-		double lat,
-		double lon,
-		double alt,
-		float speed,
-		float bearing,
-		float accuracy);
 
 	/**
 	 * @brief      Get location validity
@@ -127,6 +140,16 @@ public:
 	void invalidateAccuracy();
 
 	/**
+	 * @brief      Get the fix quality
+	 */
+	FixQuality quality() const;
+
+	/**
+	 * @brief      Get the fix mode
+	 */
+	model::FixMode fixMode() const;
+
+	/**
 	 * @brief      Get latitude and longitude values
 	 */
 	std::pair<double, double> location() const;
@@ -165,6 +188,16 @@ public:
 	 * @brief      Get timestamp value
 	 */
 	GpsUtcTime timestamp() const;
+
+	/**
+	 * @brief      Set the fix quality
+	 */
+	FixQuality quality(FixQuality value);
+
+	/**
+	 * @brief      Set the fix mode
+	 */
+	model::FixMode fixMode(model::FixMode value);
 
 	/**
 	 * @brief      Set and get latitude and longitude value

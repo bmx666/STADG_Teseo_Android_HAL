@@ -1,3 +1,24 @@
+/*
+* This file is part of Teseo Android HAL
+*
+* Copyright (c) 2016-2017, STMicroelectronics - All Rights Reserved
+* Author(s): Baudouin Feildel <baudouin.feildel@st.com> for STMicroelectronics.
+*
+* License terms: Apache 2.0.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+* http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*/
 /**
  * @brief Clock time utilities
  * @file Time.h
@@ -11,6 +32,7 @@
 #include <chrono>
 #include <iomanip>
 #include <hardware/gps.h>
+#include <sstream>
 #include "ByteVector.h"
 #include "optional.h"
 
@@ -60,6 +82,21 @@ int injectTime(GpsUtcTime time, int64_t timeReference, int uncertainty);
  * @return     The current system UTC time
  */
 GpsUtcTime systemNow();
+
+template<class ClockT>
+std::string time2string(const std::chrono::time_point<ClockT> & tp)
+{
+	auto tt = ClockT::to_time_t(tp);
+	std::ostringstream oss;
+
+	oss << std::put_time(std::gmtime(&tt), "%c %Z");
+
+	return oss.str();
+}
+
+std::string time2string(GpsUtcTime tp);
+
+GpsUtcTime utc_timestamp_to_gps_timestamp(GpsUtcTime tp);
 
 } // namespace utils
 } // namespace stm
