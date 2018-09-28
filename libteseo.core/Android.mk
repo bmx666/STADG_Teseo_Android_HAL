@@ -41,11 +41,26 @@ LOCAL_SHARED_LIBRARIES := \
 	libteseo.config       \
 	libteseo.model        \
 	libteseo.device       \
-	libteseo.protocol
+	libteseo.protocol     \
+	libteseo.geofencing
 
 ifeq ($(TESEO_STAGPS_ENABLED),true)
 	LOCAL_CPPFLAGS += -DSTAGPS_ENABLED
 	LOCAL_SHARED_LIBRARIES += libstagps
+endif
+
+ifeq ($(TESEO_STRAW_ENABLED),true)
+	LOCAL_CPPFLAGS += -DSTRAW_ENABLED
+	LOCAL_SHARED_LIBRARIES += libteseo.straw
+endif
+
+ifeq ($(TESEO_AGPS_ENABLED),true)
+	LOCAL_CPPFLAGS += -DAGPS_ENABLED
+	LOCAL_SHARED_LIBRARIES += libteseo.agnss
+endif
+
+ifeq ($(TESEO_SUPL_ENABLED),true)
+	LOCAL_CPPFLAGS += -DSUPL_ENABLED
 endif
 
 LOCAL_SRC_FILES :=                  \

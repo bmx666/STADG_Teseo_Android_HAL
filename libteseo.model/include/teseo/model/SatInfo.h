@@ -35,6 +35,9 @@ enum class SatInfoFlags : uint8_t {
 	UsedInFix    = GNSS_SV_FLAGS_USED_IN_FIX
 };
 
+Constellation prn2constellation(int16_t prn);
+int16_t prn2svid(Constellation constellation, int16_t prn);
+
 class SatIdentifier {
 private:
 	int16_t prn;
@@ -164,7 +167,7 @@ public:
 };
 
 } // namespace stm
- 
+
 namespace std {
 
 template <>

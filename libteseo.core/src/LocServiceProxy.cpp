@@ -26,6 +26,8 @@
  * @copyright 2016, STMicroelectronics, All rights reserved.
  */
 
+
+
 #include <teseo/LocServiceProxy.h>
 
 #define LOG_TAG "teseo_hal_LocServiceProxy"
@@ -34,6 +36,8 @@
 #include <hardware/gps.h>
 #include <string.h>
 #include <unordered_map>
+#include <string_view>
+#include <teseo/config/config.h>
 
 #include <teseo/HalManager.h>
 #include <teseo/utils/Thread.h>
@@ -43,14 +47,54 @@ namespace LocServiceProxy {
 
 static struct {
 	GpsCallbacks gps;
+	GpsGeofenceCallbacks geofence;
+#ifdef STRAW_ENABLED
+	GpsMeasurementCallbacks measurement;
+	GpsNavigationMessageCallbacks navigationMessage;
+#endif
+	AGpsRilCallbacks ril;
+	GpsNiCallbacks ni;
+	AGpsCallbacks agps;
 } callbacks;
 
 static struct gps_device_t * device = nullptr;
 
+
 void RegisterCallbacks(const GpsCallbacks * cb)
 {
-	memcpy(&(callbacks.gps), cb, sizeof(GpsCallbacks));
 	Thread::setCreateThreadCb(callbacks.gps.create_thread_cb);
+	memcpy(&(callbacks.gps), cb, sizeof(GpsCallbacks));
+}
+
+void RegisterGeofenceCallbacks(const GpsGeofenceCallbacks * cb)
+{
+	memcpy(&(callbacks.geofence), cb, sizeof(GpsGeofenceCallbacks));
+}
+
+#ifdef STRAW_ENABLED
+void RegisterNavigationMessageCallbacks(const GpsNavigationMessageCallbacks * cb)
+{
+	memcpy(&(callbacks.navigationMessage), cb, sizeof(GpsNavigationMessageCallbacks));
+}
+
+void RegisterMeasurementsCallbacks(const GpsMeasurementCallbacks * cb)
+{
+	memcpy(&(callbacks.measurement), cb, sizeof(GpsMeasurementCallbacks));
+}
+#endif
+void RegisterRilCallbacks(const AGpsRilCallbacks *cb)
+{
+	memcpy(&(callbacks.ril), cb, sizeof(AGpsRilCallbacks));
+}
+
+void RegisterNiCallbacks(const GpsNiCallbacks *cb)
+{
+	memcpy(&(callbacks.ni), cb, sizeof(GpsNiCallbacks));
+}
+
+void RegisterAGpsCallbacks(const AGpsCallbacks *cb)
+{
+	memcpy(&(callbacks.agps), cb, sizeof(AGpsCallbacks));
 }
 
 int openDevice(const struct hw_module_t * module, char const * name, struct hw_device_t ** dev)
@@ -96,7 +140,7 @@ int closeDevice(struct hw_device_t * dev)
 
 namespace gps {
 
-const void * onGetExtension(const char * name);
+
 
 static Signals signals;
 
@@ -219,7 +263,7 @@ void sendSatelliteListUpdate(const std::map<SatIdentifier, SatInfo> & satellites
 	};
 
 	if(status.num_svs < GNSS_MAX_SVS)
-	{	
+	{
 		std::for_each(satellites.begin(), satellites.end(), action);
 	}
 	else
@@ -259,6 +303,100 @@ void requestUtcTime()
 
 } // namespace gps
 
+namespace geofencing {
+
+using namespace stm::geofencing::model;
+
+static Signals signals;
+
+Signals & getSignals() { return signals; }
+
+void onInit(GpsGeofenceCallbacks * callbacks)
+{
+	ALOGI("Initialize geofence system request");
+	RegisterGeofenceCallbacks(callbacks);
+	signals.init();
+}
+
+void onAddGeofenceArea (int32_t geofence_id, double latitude, double longitude, double radius_meters, int last_transition, int monitor_transitions, int notification_responsiveness_ms, int unknown_timer_ms)
+{
+	ALOGI("Add geofence request");
+	GeofenceDefinition def;
+	def.id = geofence_id;
+	def.origin.latitude = DecimalDegreeCoordinate(latitude);
+	def.origin.longitude = DecimalDegreeCoordinate(longitude);
+	def.radius = radius_meters;
+	def.last_transition = static_cast<Transition>(last_transition);
+	def.monitor_transitions = monitor_transitions;
+	def.notifications_responsiveness = std::chrono::milliseconds(notification_responsiveness_ms);
+	def.unknown_time = std::chrono::milliseconds(unknown_timer_ms);
+
+	signals.addGeofenceArea(std::move(def));
+}
+
+void onPauseGeofence(int32_t geofence_id)
+{
+	ALOGI("Pause geofence request");
+	signals.pauseGeofence(geofence_id);
+}
+
+void onResumeGeofence(int32_t geofence_id, int monitor_transitions)
+{
+	ALOGI("Resume geofence request");
+	signals.resumeGeofence(geofence_id, monitor_transitions);
+}
+
+void onRemoveGeofenceArea(int32_t geofence_id)
+{
+	ALOGI("Remove geofence request");
+	signals.removeGeofenceArea(geofence_id);
+}
+
+void sendGeofenceTransition(GeofenceId geofence_id,  const Location & loc, Transition transition, GpsUtcTime timestamp)
+{
+	// Convert location to Android location format
+	GpsLocation location;
+	loc.copyToGpsLocation(location);
+
+	ALOGI("Send geofence transition: id=%d, loc=%s", geofence_id, loc.toString().c_str());
+	callbacks.geofence.geofence_transition_callback(geofence_id, &location, static_cast<int32_t>(transition), timestamp);
+}
+
+void sendGeofenceStatus(SystemStatus status, const Location & last_location)
+{
+	GpsLocation location;
+	last_location.copyToGpsLocation(location);
+
+	ALOGI("Send geofence system status: %d", static_cast<int32_t>(status));
+	callbacks.geofence.geofence_status_callback(static_cast<int32_t>(status), &location);
+}
+
+void answerGeofenceAddRequest(GeofenceId geofence_id, OperationStatus status)
+{
+	ALOGI("Answer geofence add request; id=%d, result=%d", geofence_id, static_cast<int32_t>(status));
+	callbacks.geofence.geofence_add_callback(geofence_id, static_cast<int32_t>(status));
+}
+
+void answerGeofenceRemoveRequest(GeofenceId geofence_id, OperationStatus status)
+{
+	ALOGI("Answer geofence remove request; id=%d, result=%d", geofence_id, static_cast<int32_t>(status));
+	callbacks.geofence.geofence_remove_callback(geofence_id, static_cast<int32_t>(status));
+}
+
+void answerGeofencePauseRequest(GeofenceId geofence_id, OperationStatus status)
+{
+	ALOGI("Answer geofence pause request; id=%d, result=%d", geofence_id, static_cast<int32_t>(status));
+	callbacks.geofence.geofence_pause_callback(geofence_id, static_cast<int32_t>(status));
+}
+
+void answerGeofenceResumeRequest(GeofenceId geofence_id, OperationStatus status)
+{
+	ALOGI("Answer geofence resume request; id=%d, result=%d", geofence_id, static_cast<int32_t>(status));
+	callbacks.geofence.geofence_resume_callback(geofence_id, static_cast<int32_t>(status));
+}
+
+} // namespace geofencing
+
 namespace debug {
 
 static Signals signals;
@@ -294,6 +432,229 @@ std::size_t getInternalState(char * buffer, std::size_t bufferSize)
 
 } // namespace debug
 
+#ifdef STRAW_ENABLED
+namespace measurement {
+static Signals signals;
+
+Signals & getSignals()
+{
+	return signals;
+}
+
+int  onInit(GpsMeasurementCallbacks * cb)
+{
+   	RegisterMeasurementsCallbacks(cb);
+	signals.init.emit(cb);
+	return 0;
+}
+void onClose(void)
+{
+   	signals.close.emit();
+}
+
+void sendMeasurements(const GnssClock & clockData, std::vector <GnssMeasurement> & measurementdata)
+{
+	ALOGI("SendMeasurements");
+
+	GnssData Measurementmsg = {.size = sizeof(GnssData), .measurement_count = 0};
+	Measurementmsg.clock = clockData;
+	Measurementmsg.measurement_count = measurementdata.size();
+	int i = 0;
+	for(std::vector<GnssMeasurement>::iterator it = measurementdata.begin(); it != measurementdata.end(); it++,i++ )    {
+		if(i == GNSS_MAX_MEASUREMENT) {
+			break;
+		}
+		Measurementmsg.measurements[i] = *it ;
+	}
+	callbacks.measurement.gnss_measurement_callback( &Measurementmsg);
+}
+
+}
+
+namespace navigationMessage {
+
+static Signals signals;
+
+Signals & getSignals() { return signals; }
+
+int onInit(GpsNavigationMessageCallbacks * callbacks)
+{
+	RegisterNavigationMessageCallbacks(callbacks);
+	signals.init.emit(callbacks);
+	return 0;
+}
+
+void onClose(void)
+{
+	signals.close.emit();
+}
+
+void sendNavigationMessages(GnssNavigationMessage & msg)
+{
+	ALOGI("SendNavigationMessages");
+	callbacks.navigationMessage.gnss_navigation_message_callback(static_cast<GnssNavigationMessage *> (&msg));
+}
+} //end navigation message
+
+#endif
+namespace ril {
+	static Signals signals;
+
+	Signals & getSignals() { return signals; }
+
+
+	void onInit(AGpsRilCallbacks *callbacks)
+	{
+		ALOGI("Initialize ril interface");
+		RegisterRilCallbacks(callbacks);
+		signals.init();
+	}
+
+	void onSetRefLocation(const AGpsRefLocation *agps_reflocation, size_t sz_struct)
+	{
+		ALOGI("Set Reference Location received");
+		(void)(sz_struct);
+		signals.setRefLocation(std::move(agps_reflocation));
+	}
+
+ 	void onSetSetId( AGpsSetIDType type, const char *setid)
+	{
+		ALOGI("Set Set ID received");
+		signals.setSetId(type, setid);
+	}
+ 	void onNiMessage(uint8_t *msg, size_t len)
+	{
+		ALOGI("Ni message received");
+		(void)(len);
+		signals.niMessage(msg);
+	}
+	void onUpdateNetworkState(int connected, int type, int roaming, const char *extra_info)
+	{
+		ALOGI("Update Network State received");
+		(void)(extra_info);
+		signals.updateNetworkState(connected,type,roaming);
+	}
+
+	void onUpdateNetworkAvailability(int available, const char *apn)
+	{
+		ALOGI("Update Network Availability received");
+		(void)(apn);
+		signals.updateNetworkAvailability(available);
+	}
+
+	void sendRequestSetId(uint32_t flags)
+	{
+		ALOGI("Request Cell Id");
+		callbacks.ril.request_setid(flags);
+	}
+
+	void sendRequestReferenceLocation(uint32_t flags)
+	{
+		ALOGI("Request Ref loc");
+		callbacks.ril.request_refloc(flags);
+	}
+
+} // namespace ril
+
+namespace ni
+{
+	static Signals signals;
+
+	Signals & getSignals() { return signals; }
+
+	void onInit(GpsNiCallbacks *callbacks)
+	{
+		ALOGI("Initialize Ni interface");
+		RegisterNiCallbacks(callbacks);
+		signals.init();
+	}
+
+	void onResponse(int notif_id, GpsUserResponseType user_response)
+	{
+		ALOGI("Response to Network Initiated request");
+		signals.respond(notif_id, user_response);
+	}
+
+	void sendNiNotificationRequest(GpsNiNotification *notification)
+	{
+		ALOGI("Send Network Initiated request");
+		callbacks.ni.notify_cb(notification);
+	}
+} // namespace ni
+
+
+namespace agps
+{
+	static Signals signals;
+
+	Signals & getSignals() { return signals; }
+
+	void onInit(AGpsCallbacks *callbacks)
+	{
+		ALOGI("Initialize AGps interface");
+		RegisterAGpsCallbacks(callbacks);
+		signals.init();
+	}
+
+	/**
+     * Deprecated.
+     * If the HAL supports AGpsInterface_v2 this API will not be used, see
+     * data_conn_open_with_apn_ip_type for more information.
+     */
+	int onDataConnOpen(const char* apn)
+	{
+		ALOGI("Data connection open");
+		(void)(apn);
+		return 0;
+	}
+
+    /**
+     * Notifies that the AGPS data connection has been closed.
+     */
+	int onDataConnClosed(void)
+	{
+		ALOGI("Data connection closed");
+		return 0;
+	}
+	/**
+     * Notifies that a data connection is not available for AGPS.
+     */
+	int onDataConnFailed(void)
+	{
+		ALOGI("Data connection failed");
+		return 0;
+	}
+
+	/**
+     * Sets the hostname and port for the AGPS server.
+     */
+	int onSetServer(AGpsType type, const char* hostname, int port)
+	{
+		ALOGI("AGps received set server");
+		signals.setServer(type,hostname, port);
+		return 0;
+	}
+
+	/**
+     * Notifies that a data connection is available and sets the name of the
+     * APN, and its IP type, to be used for SUPL connections.
+     */
+	int onDataConnOpenWithApnType(const char* apn, ApnIpType apnIpType)
+	{
+		ALOGI("Data connection available with apn");
+		(void)(apn);
+		(void)(apnIpType);
+		return 0;
+	}
+
+
+	void sendAGpsStatus(AGpsStatus* status)
+	{
+		ALOGI("Send agps status");
+		callbacks.agps.status_cb(status);
+	}
+}
+
 static Interfaces interfaces = {
 	.gps = {
 		.size               = sizeof(GpsInterface),
@@ -307,24 +668,80 @@ static Interfaces interfaces = {
 		.set_position_mode  = &LocServiceProxy::gps::onSetPositionMode,
 		.get_extension      = &LocServiceProxy::gps::onGetExtension
 	},
+	.geofencing = {
+		.size                 = sizeof(GpsGeofencingInterface),
+		.init                 = &LocServiceProxy::geofencing::onInit,
+		.add_geofence_area    = &LocServiceProxy::geofencing::onAddGeofenceArea,
+		.pause_geofence       = &LocServiceProxy::geofencing::onPauseGeofence,
+		.resume_geofence      = &LocServiceProxy::geofencing::onResumeGeofence,
+		.remove_geofence_area = &LocServiceProxy::geofencing::onRemoveGeofenceArea
+	},
 	.debug = {
 		.size               = sizeof(GpsDebugInterface),
 		.get_internal_state = &LocServiceProxy::debug::getInternalState
+	},
+#ifdef STRAW_ENABLED
+	.measurement = {
+		.size               = sizeof(GpsMeasurementInterface),
+		.init               = &LocServiceProxy::measurement::onInit,
+		.close              = &LocServiceProxy::measurement::onClose
+	},
+	.navigationMessage = {
+		.size                 = sizeof(GpsNavigationMessageInterface),
+		.init                 = &LocServiceProxy::navigationMessage::onInit,
+		.close              = &LocServiceProxy::navigationMessage::onClose
+	},
+#endif
+	.ril = {
+		.size				= sizeof(AGpsRilInterface),
+		.init				= &LocServiceProxy::ril::onInit,
+		.set_ref_location	= &LocServiceProxy::ril::onSetRefLocation,
+		.set_set_id			= &LocServiceProxy::ril::onSetSetId,
+		.ni_message         = &LocServiceProxy::ril::onNiMessage,
+		.update_network_state= &LocServiceProxy::ril::onUpdateNetworkState,
+		.update_network_availability=&LocServiceProxy::ril::onUpdateNetworkAvailability
+	},
+	.ni = {
+		.size				= sizeof(GpsNiInterface),
+		.init				= &LocServiceProxy::ni::onInit,
+		.respond			= &LocServiceProxy::ni::onResponse
+	},
+	.agps = {
+		.size				= sizeof(AGpsInterface),
+		.init				= &LocServiceProxy::agps::onInit,
+		.data_conn_open		= &LocServiceProxy::agps::onDataConnOpen,
+		.data_conn_closed	= &LocServiceProxy::agps::onDataConnClosed,
+		.data_conn_failed	= &LocServiceProxy::agps::onDataConnFailed,
+		.set_server			= &LocServiceProxy::agps::onSetServer,
+		.data_conn_open_with_apn_ip_type =&LocServiceProxy::agps::onDataConnOpenWithApnType	
 	}
+
 };
 
-static std::unordered_map<const char *, void *> interfacesMap = {
-	{GPS_XTRA_INTERFACE,               NULL}                ,
-	{GPS_DEBUG_INTERFACE,              &(interfaces.debug)} ,
-	{AGPS_INTERFACE,                   NULL}                ,
-	{SUPL_CERTIFICATE_INTERFACE,       NULL}                ,
-	{GPS_NI_INTERFACE,                 NULL}                ,
-	{AGPS_RIL_INTERFACE,               NULL}                ,
-	{GPS_GEOFENCING_INTERFACE,         NULL}                ,
-	{GPS_MEASUREMENT_INTERFACE,        NULL}                ,
-	{GPS_NAVIGATION_MESSAGE_INTERFACE, NULL}                ,
+static std::unordered_map<std::string_view, void *> interfacesMap = {
+	{GPS_XTRA_INTERFACE,               NULL}                     ,
+	{GPS_DEBUG_INTERFACE,              &(interfaces.debug)}      ,
+	{SUPL_CERTIFICATE_INTERFACE,       NULL}                     ,
+#ifdef AGPS_ENABLED
+	{AGPS_INTERFACE,                   &(interfaces.agps)}       ,
+	{GPS_NI_INTERFACE,                 &(interfaces.ni)}         ,
+	{AGPS_RIL_INTERFACE,               &(interfaces.ril)}        ,
+#else
+	{AGPS_INTERFACE,                   NULL}                     ,
+	{AGPS_RIL_INTERFACE,               NULL} 				     ,
+	{GPS_NI_INTERFACE,                 NULL}                     ,
+#endif
+	{GPS_GEOFENCING_INTERFACE,         &(interfaces.geofencing)} ,
+#ifdef STRAW_ENABLED
+	{GPS_MEASUREMENT_INTERFACE,        &(interfaces.measurement)}   	,
+	{GPS_NAVIGATION_MESSAGE_INTERFACE, &(interfaces.navigationMessage)}	,
+#else
+	{GPS_MEASUREMENT_INTERFACE,        NULL}				,
+	{GPS_NAVIGATION_MESSAGE_INTERFACE, NULL}				,
+#endif
 	{GNSS_CONFIGURATION_INTERFACE,     NULL}
 };
+
 
 const GpsInterface * getGpsInterface(struct gps_device_t * device)
 {
@@ -335,10 +752,34 @@ const GpsInterface * getGpsInterface(struct gps_device_t * device)
 namespace gps {	
 	const void * onGetExtension(const char * name)
 	{
-		ALOGI("Get extension '%s'", name);
-		return interfacesMap.count(name) == 1 ? interfacesMap[name] : NULL;
+		
+
+#ifdef AGPS_ENABLED
+		if((std::strcmp(AGPS_INTERFACE,name)==0)||
+			(std::strcmp(AGPS_RIL_INTERFACE,name)==0)||
+			(std::strcmp(GPS_NI_INTERFACE,name)==0))
+			{
+				// data assistance disabled in configuration
+				if(!config::get().agnss.enable)
+				{
+					return NULL;
+				}
+			}
+#endif
+		auto it  = interfacesMap.find(std::string_view(name));
+
+		if(it != interfacesMap.end())
+		{
+			ALOGI("Get extension '%s': %p", name, it->second);
+			return it->second;
+		}
+		else{
+			ALOGI("Extension '%s' not supported: NULL", name);
+			return NULL;
+		}
 	}
 }
+
 
 } // namespace LocServiceProxy
 } // namespace stm

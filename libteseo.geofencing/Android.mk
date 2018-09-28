@@ -21,16 +21,10 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# HAL module implemenation stored in
-# hw/<GPS_HARDWARE_MODULE_ID>.<ro.hardware>.so
-
-# gps hal module
+# libteseo.model module
 include $(CLEAR_VARS)
 
-LOCAL_PRELINK_MODULE := false
-LOCAL_MODULE_RELATIVE_PATH := hw
-
-LOCAL_MODULE := gps.$(TARGET_BOARD_PLATFORM)
+LOCAL_MODULE := libteseo.geofencing
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
 
@@ -42,30 +36,22 @@ LOCAL_SHARED_LIBRARIES := \
 	libcutils             \
 	libsysutils           \
 	libhardware           \
-	libteseo.vendor       \
-	libteseo              \
-	libteseo.core         \
-	libteseo.device       \
-	libteseo.protocol     \
 	libteseo.model        \
-	libteseo.config       \
-	libteseo.utils
+	libteseo.vendor
 
-ifeq ($(TESEO_STAGPS_ENABLED),true)
-	LOCAL_CPPFLAGS += -DSTAGPS_ENABLED
-	LOCAL_SHARED_LIBRARIES += libstagps
-endif
+LOCAL_SRC_FILES :=   \
+	src/Geofence.cpp \
+	src/manager.cpp  \
+	src/model.cpp
 
-ifeq ($(TESEO_AGPS_ENABLED),true)
-	LOCAL_CPPFLAGS += -DAGPS_ENABLED
-	LOCAL_SHARED_LIBRARIES += libteseo.agnss
-endif
+LOCAL_COPY_HEADERS_TO := teseo/geofencing/
+LOCAL_COPY_HEADERS :=                   \
+	include/teseo/geofencing/Geofence.h \
+	include/teseo/geofencing/manager.h  \
+	include/teseo/geofencing/model.h
+	
 
-ifeq ($(TESEO_SUPL_ENABLED),true)
-	LOCAL_CPPFLAGS += -DSUPL_ENABLED
-endif
-
-LOCAL_SRC_FILES :=    \
-	gps.cpp
+LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_SHARED_LIBRARY)
+

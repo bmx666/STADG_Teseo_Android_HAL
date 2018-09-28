@@ -1,6 +1,9 @@
 documentation
 libstagps
+libteseo.agnss
+libteseo.straw
 
 # Visual Studio Code
 .vscode/
 
+.vscode/settings.json

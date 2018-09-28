@@ -59,9 +59,28 @@ namespace stagps {
 class StagpsEngine;
 } // namespace stagps
 
+namespace geofencing {
+class GeofencingManager;
+} // namespace geofencing
+
+namespace straw {
+class StrawEngine;
+} // namespace straw
+namespace ril {
+class Ril_If;
+} // namespace ril
+
+namespace ni {
+class Ni_If;
+} // namespace ril
+
+namespace agps {
+class Agps_If;
+} // namespace agps
+
 /**
  * @brief      HAL Manager class
- * 
+ *
  * @details    This class is responsible of:
  * - The HAL initialization,
  * - The virtual device creation,
@@ -85,11 +104,29 @@ private:
 
 	stagps::StagpsEngine * stagpsEngine;
 
+	geofencing::GeofencingManager * geofencingManager;
+
+	straw::StrawEngine *rawMeasurement;
+	stm::ril::Ril_If * rilIf;
+
+	stm::ni::Ni_If * niIf;
+
+	stm::agps::Agps_If * AgpsIf;
+
 	void initUtils();
-	
+
 	void initDevice();
 
 	void initStagps();
+
+	void initGeofencing();
+
+	void initRawMeasurement();
+	void initAGpsIf();
+
+	void initRilIf();
+
+	void initNiIf();
 
 public:
 	HalManager();
@@ -98,7 +135,7 @@ public:
 
 	/**
 	 * @brief      HAL Initializer
-	 * 
+	 *
 	 * @details    The initializer create a virtual device using the gps.conf configuration file
 	 * and send the HAL capabilities to the android platform.
 	 *
