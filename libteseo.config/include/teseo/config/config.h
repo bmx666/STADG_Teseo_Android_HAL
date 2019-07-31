@@ -36,7 +36,7 @@ namespace config {
 /**
  * Configuration structure
  *
- * @details Configuration is parsed from /etc/gps.conf file
+ * @details Configuration is parsed from /vendor/etc/gps.conf file
  * Each configuration block configures one component or sub-component of the HAL.
  */
 struct Configuration {
@@ -101,7 +101,7 @@ struct Configuration {
 
 };
 
-const Configuration & read(const std::string & path = std::string("/etc/gps.conf"));
+const Configuration & read(const std::string & path = std::string("/vendor/etc/gps.conf"));
 
 const Configuration & get();
 
