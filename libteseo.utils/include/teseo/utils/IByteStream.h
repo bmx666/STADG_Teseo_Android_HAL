@@ -65,6 +65,7 @@ public:
     StreamException & operator=(const StreamException & other) noexcept
 	{
 		type = other.type;
+		return *this;
 	}
 
     virtual ~StreamException() noexcept

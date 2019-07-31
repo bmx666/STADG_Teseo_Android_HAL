@@ -27,6 +27,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.geofencing
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := $(TESEO_GLOBAL_CPPFLAGS)
 
@@ -44,12 +45,7 @@ LOCAL_SRC_FILES :=   \
 	src/manager.cpp  \
 	src/model.cpp
 
-LOCAL_COPY_HEADERS_TO := teseo/geofencing/
-LOCAL_COPY_HEADERS :=                   \
-	include/teseo/geofencing/Geofence.h \
-	include/teseo/geofencing/manager.h  \
-	include/teseo/geofencing/model.h
-	
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 
 LOCAL_PRELINK_MODULE := false
 

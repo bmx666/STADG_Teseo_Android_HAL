@@ -27,6 +27,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.utils
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := $(TESEO_GLOBAL_CPPFLAGS)
 
@@ -53,26 +54,7 @@ LOCAL_SRC_FILES :=             \
 	src/utils.cpp              \
 	src/Wakelock.cpp
 
-LOCAL_COPY_HEADERS_TO:= teseo/utils/
-LOCAL_COPY_HEADERS :=                       \
-	include/teseo/utils/any.h               \
-	include/teseo/utils/ByteVector.h        \
-	include/teseo/utils/Channel.h           \
-	include/teseo/utils/constraints.h       \
-	include/teseo/utils/DebugOutputStream.h \
-	include/teseo/utils/errors.h            \
-	include/teseo/utils/http.h              \
-	include/teseo/utils/IByteStream.h       \
-	include/teseo/utils/IStream.h           \
-	include/teseo/utils/NmeaStream.h        \
-	include/teseo/utils/optional.h          \
-	include/teseo/utils/result.h            \
-	include/teseo/utils/Signal.h            \
-	include/teseo/utils/Thread.h            \
-	include/teseo/utils/Time.h              \
-	include/teseo/utils/UartByteStream.h    \
-	include/teseo/utils/utils.h             \
-	include/teseo/utils/Wakelock.h
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 
 LOCAL_PRELINK_MODULE := false
 

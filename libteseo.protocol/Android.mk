@@ -27,6 +27,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.protocol
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := $(TESEO_GLOBAL_CPPFLAGS)
 
@@ -47,12 +48,7 @@ LOCAL_SRC_FILES :=              \
 	src/NmeaDecoder.cpp         \
 	src/NmeaEncoder.cpp
 
-LOCAL_COPY_HEADERS_TO:= teseo/protocol/
-LOCAL_COPY_HEADERS :=                        \
-	include/teseo/protocol/AbstractDecoder.h \
-	include/teseo/protocol/IEncoder.h        \
-	include/teseo/protocol/NmeaDecoder.h     \
-	include/teseo/protocol/NmeaEncoder.h
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 
 LOCAL_PRELINK_MODULE := false
 

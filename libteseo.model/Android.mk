@@ -27,6 +27,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.model
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := $(TESEO_GLOBAL_CPPFLAGS)
 
@@ -50,23 +51,7 @@ LOCAL_SRC_FILES :=              \
 	src/TalkerId.cpp            \
 	src/Version.cpp
 
-LOCAL_COPY_HEADERS_TO := teseo/model/
-LOCAL_COPY_HEADERS :=                          \
-	include/teseo/model/Almanac.h              \
-	include/teseo/model/Constellations.h       \
-	include/teseo/model/Coordinate.h           \
-	include/teseo/model/Ephemeris.h            \
-	include/teseo/model/FixAndOperatingModes.h \
-	include/teseo/model/FixQuality.h           \
-	include/teseo/model/Location.h             \
-	include/teseo/model/Message.h              \
-	include/teseo/model/NmeaMessage.h          \
-	include/teseo/model/SatInfo.h              \
-	include/teseo/model/Stagps.h               \
-	include/teseo/model/TalkerId.h             \
-	include/teseo/model/ValueContainer.h       \
-	include/teseo/model/Version.h 		 
-	
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 
 LOCAL_PRELINK_MODULE := false
 

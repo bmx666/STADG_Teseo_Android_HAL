@@ -27,6 +27,7 @@
 //#include <sys/stat.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <unistd.h>
 
 #define LOG_TAG "teseo_hal_UartByteStream"
 #include <cutils/log.h>

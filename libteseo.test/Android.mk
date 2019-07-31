@@ -26,6 +26,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.test
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := eng
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := -Wall -Wextra -std=c++1z -fexceptions -frtti
 

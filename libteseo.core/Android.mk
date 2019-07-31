@@ -27,6 +27,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.core
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := $(TESEO_GLOBAL_CPPFLAGS)
 
@@ -67,10 +68,7 @@ LOCAL_SRC_FILES :=                  \
 	src/HalManager.cpp              \
 	src/LocServiceProxy.cpp
 
-LOCAL_COPY_HEADERS_TO:= teseo/
-LOCAL_COPY_HEADERS :=               \
-	include/teseo/HalManager.h      \
-	include/teseo/LocServiceProxy.h
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 
 LOCAL_PRELINK_MODULE := false
 

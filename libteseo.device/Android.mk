@@ -27,6 +27,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.device
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := $(TESEO_GLOBAL_CPPFLAGS)
 
@@ -44,10 +45,7 @@ LOCAL_SRC_FILES :=         \
 	src/AbstractDevice.cpp \
 	src/NmeaDevice.cpp
 
-LOCAL_COPY_HEADERS_TO:= teseo/device/
-LOCAL_COPY_HEADERS :=                     \
-	include/teseo/device/AbstractDevice.h \
-	include/teseo/device/NmeaDevice.h
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 
 LOCAL_PRELINK_MODULE := false
 

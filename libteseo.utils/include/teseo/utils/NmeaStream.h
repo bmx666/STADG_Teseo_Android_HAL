@@ -44,8 +44,7 @@ namespace stream {
  * @brief      NMEA Stream reader/writer
  */
 class NmeaStream :
-	public IStream,
-	public Trackable
+	public IStream
 {
 private:
 	ByteVector buffer;

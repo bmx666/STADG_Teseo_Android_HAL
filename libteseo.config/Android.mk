@@ -27,6 +27,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := libteseo.config
 LOCAL_MODULE_OWNER := stm
 LOCAL_MODULE_TAGS := optional
+LOCAL_VENDOR_MODULE := true
 
 LOCAL_CPPFLAGS := $(TESEO_GLOBAL_CPPFLAGS)
 
@@ -41,8 +42,7 @@ LOCAL_SHARED_LIBRARIES := \
 
 LOCAL_SRC_FILES := src/config.cpp
 
-LOCAL_COPY_HEADERS_TO:= teseo/config/
-LOCAL_COPY_HEADERS := include/teseo/config/config.h
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)/include
 
 LOCAL_PRELINK_MODULE := false
 
